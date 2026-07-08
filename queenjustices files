@@ -1,0 +1,166 @@
+-- QUEENJUSTICE REALM DATABASE
+
+CREATE TABLE IF NOT EXISTS sponsors (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  github_username TEXT,
+  github_id TEXT,
+  action TEXT,
+  sponsor_type TEXT DEFAULT 'GitHub Sponsor',
+  website TEXT DEFAULT 'https://sites.google.com/view/queenjusticemusic/home?authuser=0',
+  vip_status BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE IF NOT EXISTS fans (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT,
+  email TEXT UNIQUE,
+  avatar_url TEXT,
+  membership TEXT DEFAULT 'Fan',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE IF NOT EXISTS songs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  release_date DATE,
+  streaming_link TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE IF NOT EXISTS events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_name TEXT,
+  event_date DATE,
+  location TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE IF NOT EXISTS merch (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  item_name TEXT,
+  price NUMERIC,
+  image_url TEXT,
+  store_link TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE IF NOT EXISTS community_posts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  fan_id UUID REFERENCES fans(id),
+  message TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+-- ADD QUEENJUSTICE RELEASES
+
+INSERT INTO songs(title, release_date)
+VALUES
+('The Streets Know My Name','2026-06-25'),
+('Daddy''s Girl','2026-07-09');
+2. Supabase Webhook Function
+
+Create an Edge Function:
+
+Name:
+
+github-sponsorship-webhook
+
+File:
+
+index.ts
+
+Paste:
+
+import { serve } from "https://deno.land/std/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+
+serve(async (req) => {
+
+  const payload = await req.json();
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+
+  const sponsorData = {
+
+    github_username:
+      payload.sender?.login ?? "unknown",
+
+    github_id:
+      String(payload.sender?.id ?? ""),
+
+    action:
+      payload.action ?? "unknown",
+
+    sponsor_type:
+      "GitHub Sponsor",
+
+    website:
+      "https://sites.google.com/view/queenjusticemusic/home?authuser=0",
+
+    vip_status:
+      true
+  };
+
+
+  const { error } =
+    await supabase
+    .from("sponsors")
+    .insert(sponsorData);
+
+
+  if(error){
+
+    return new Response(
+      JSON.stringify({
+        success:false,
+        error:error.message
+      }),
+      {
+        status:500
+      }
+    );
+
+  }
+
+
+  return new Response(
+    JSON.stringify({
+      success:true,
+      message:"Welcome to QueenJustice Realm VIP"
+    }),
+    {
+      headers:{
+        "Content-Type":"application/json"
+      }
+    }
+  );
+
+});
+
+After you deploy the function, Supabase gives you your real webhook URL:
+
+https://YOUR_PROJECT_ID.supabase.co/functions/v1/github-sponsorship-webhook
+
+Put that URL into GitHub:
+
+Repository → Settings → Webhooks → Add webhook
+
+Payload URL:
+
+https://YOUR_PROJECT_ID.supabase.co/functions/v1/github-sponsorship-webhook
+
+Content type:
+
+application/json
